@@ -12,98 +12,84 @@
 
 #include "get_next_line.h"
 
-char	*get_next_line(int fd)
+void	free_memory(char **ptr)
 {
-	static char	*left_c;
-	char		*buffer;
-	char		*line;
-	int		bytes_read;
-
-	buffer = malloc((BUFFER_SIZE +1) * sizeof(char));
-	if (fd < 0 || BUFFER_SIZE <= 0 )
-		return (NULL);
-	bytes_read = read(fd, 0, 0);
-	if ( bytes_read < 0)
+	if (ptr && *ptr)
 	{
-		free(buffer);
-		free (left_c);
-		buffer = NULL;
-		left_c = NULL;
-		return (NULL);
+		free(*ptr);
+		*ptr = NULL;
 	}
-	if (!buffer)
-		return (NULL);
-	line = _fill_line_buffer(fd, left_c, buffer);
-	free(buffer);
-	if (!line)
-		return (NULL);
-	left_c = _set_line(line);
-	return (line);
 }
 
-char	*_fill_line_buffer(int fd,char *left_c,char *buffer)
+char	*_fill_line_buffer(int fd, char *left_c, char *buffer)
 {
-	int	bytes_read;
-	int	newline;
-	
-	newline = 0;
-	while(!newline)
+	int		bytes_read;
+	char	*temp;
+
+	bytes_read = 1;
+	while (bytes_read > 0)
 	{
-	bytes_read = read (fd, buffer, BUFFER_SIZE);
-	if (bytes_read <= 0)
-		return (NULL);
-	buffer[bytes_read] = '\0';
-	if (left_c != NULL)
-	{
-		left_c = realloc(left_c, ft_strlen(left_c) + bytes_read + 1);
-		ft_strcat(left_c, buffer);
-	}
-		else
-			left_c = ft_strdup(buffer);
-		if (ft_strchr(buffer, '\n') != NULL)
-			newline = 1;
+		bytes_read = read (fd, buffer, BUFFER_SIZE);
+		if (bytes_read == -1)
+		{
+			free_memory(&left_c);
+			return (NULL);
+		}
+		buffer[bytes_read] = '\0';
+		if (left_c == NULL)
+			left_c = ft_strdup("");
+		temp = left_c;
+		left_c = ft_strjoin(temp, buffer);
+		free_memory(&temp);
+		if (ft_strchr(buffer, '\n'))
+			break ;
 	}
 	return (left_c);
 }
 
 char	*_set_line(char *line_buffer)
 {
-
 	char	*left_c;
-	int	i;
+	size_t	i;
 
 	left_c = NULL;
 	i = 0;
 	if (!line_buffer)
 		return (NULL);
-	while (line_buffer[i] != '\n' || line_buffer[i] != '\0' )
+	while (line_buffer[i] != '\n' && line_buffer[i] != '\0' )
 		i++;
-	left_c = ft_substr(line_buffer, i + 1, ft_strlen(line_buffer) - i);
-	if (left_c[0] == 0)
+	if (line_buffer[i] == '\n')
 	{
-		free(left_c);
-		left_c = NULL;
+		left_c = ft_substr(line_buffer, i + 1, ft_strlen(line_buffer) - i);
+		line_buffer[i + 1] = '\0';
 	}
-	line_buffer[i + 1] = 0;
+	else
+		left_c = NULL;
 	return (left_c);
 }
-char	*ft_strcat(char *dest, char *src)
-{
-	int	i;
-	int	j;
 
-	i = 0;
-	j = 0;
-	while (dest[i] != '\0')
+char	*get_next_line(int fd)
+{
+	static char	*left_c;
+	char		*buffer;
+	char		*line;
+	char		*temp;
+
+	buffer = malloc((BUFFER_SIZE + 1) * sizeof(char));
+	if (!buffer || fd < 0 || BUFFER_SIZE <= 0)
 	{
-		i++;
+		free_memory(&buffer);
+		free_memory(&left_c);
+		return (NULL);
 	}
-	while (src[j] != '\0')
-	{
-		dest[i] = src[j];
-		i++;
-		j++;
-	}
-	dest[i] = '\0';
-	return (dest);
+	if (left_c == NULL || !ft_strchr(left_c, '\n'))
+		left_c = _fill_line_buffer(fd, left_c, buffer);
+	free_memory(&buffer);
+	if (!left_c)
+		return (NULL);
+	line = ft_substr(left_c, 0, ft_strchr(left_c, '\n') - left_c + 1);
+	temp = left_c;
+	left_c = _set_line(left_c);
+	free_memory(&temp);
+	return (line);
 }
